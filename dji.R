@@ -239,54 +239,41 @@ filter_dj_stats(dj_stats, "Mean", 0)
 ## [1] "2007" "2009" "2010" "2011" "2012" "2013" "2014" "2016" "2017"
 
 # All mean values in ascending order.
-
 dj_stats["Mean",order(dj_stats["Mean",,])]
 
 
 # Median
-
 # Years when Dow Jones weekly log-returns have positive median are:
-
 filter_dj_stats(dj_stats, "Median", 0)
 
-
 # All median values in ascending order.
-
 dj_stats["Median",order(dj_stats["Median",,])]
 
 
 # Skewness
 
 # Years when Dow Jones weekly log-returns have positive skewness are:
-
 filter_dj_stats(dj_stats, "Skewness", 0)
 ## [1] "2009" "2017"
 
 # All skewness values in ascending order.
-
 dj_stats["Skewness",order(dj_stats["Skewness",,])]
 
 
 # Excess Kurtosis
 
 # Years when Dow Jones weekly log-returns have positive excess kurtosis are:
-
 filter_dj_stats(dj_stats, "Kurtosis", 0)
 ## [1] "2008" "2010" "2011" "2014" "2015" "2016"
 
 # All excess kurtosis values in ascending order.
-
 dj_stats["Kurtosis",order(dj_stats["Kurtosis",,])]
-
-
 # Year 2008 has also highest weekly kurtosis. However in this scenario, 2017 has negative kurtosis and year 2016 has the second highest kurtosis.
 
 # Box-plots
-
 dataframe_boxplot(dj_weekly_ret_df, "DJIA weekly log-returns box plots 2007-2018")
 
 # Density plots
-
 dataframe_densityplot(dj_weekly_ret_df, "DJIA weekly log-returns density plots 2007-2018")
 
 # Shapiro Tests
@@ -299,4 +286,195 @@ dataframe_qqplot(dj_weekly_ret_df, "DJIA weekly log-returns QQ plots 2007-2018")
 
 # Saving the current enviroment for further analysis.
 save.image(file='DowEnvironment.RData')
+
+
+### Part 2/4 ###
+load(file='DowEnvironment.RData')
+# Daily Volume Exploratory Analysis
+# From the saved environment, we can find back our DJI object. We plot the daily volume.
+dj_vol <- DJI[,"DJI.Volume"]
+plot(dj_vol)
+# It is remarkable the level jump at the beginning of 2017, something that we will investigate in part 4.
+# We transform the volume time series data and timeline index into a dataframe.
+dj_vol_df <- xts_to_dataframe(dj_vol)
+head(dj_vol_df)
+tail(dj_vol_df)
+# Basic statistics summary
+(dj_stats <- dataframe_basicstats(dj_vol_df))
+
+# In the following, we make specific comments to some relevant above shown metrics.
+# Mean
+
+# Years when Dow Jones daily volume has positive mean are:
+
+filter_dj_stats(dj_stats, "Mean", 0)
+
+
+# All Dow Jones daily volume mean values in ascending order.
+
+dj_stats["Mean",order(dj_stats["Mean",,])]
+
+
+# Median
+
+# Years when Dow Jones daily volume has positive median are:
+
+filter_dj_stats(dj_stats, "Median", 0)
+
+
+# All Dow Jones daily volume median values in ascending order.
+
+dj_stats["Median",order(dj_stats["Median",,])]
+
+
+# Skewness
+
+# Years when Dow Jones daily volume has positive skewness are:
+
+filter_dj_stats(dj_stats, "Skewness", 0)
+##  [1] "2007" "2008" "2009" "2010" "2011" "2012" "2013" "2014" "2015" "2016"
+## [11] "2017" "2018"
+
+# All Dow Jones daily volume skewness values in ascending order.
+
+dj_stats["Skewness",order(dj_stats["Skewness",,])]
+
+
+# Excess Kurtosis
+
+# Years when Dow Jones daily volume has positive excess kurtosis are:
+filter_dj_stats(dj_stats, "Kurtosis", 0)
+# All Dow Jones daily volume excess kurtosis values in ascending order.
+dj_stats["Kurtosis",order(dj_stats["Kurtosis",,])]
+
+
+# Box-plots
+
+dataframe_boxplot(dj_vol_df, "DJIA daily volume box plots 2007-2018")
+
+# The trade volume starts to decrease from 2010 and on 2017 a remarkable increase occurred. Year 2018 volume has been even larger than 2017 and other years as well.
+
+# Density plots
+
+dataframe_densityplot(dj_vol_df, "DJIA daily volume density plots 2007-2018")
+
+# Shapiro Tests
+
+dataframe_shapirotest(dj_vol_df)
+# The null hypothesis of normality is rejected for all years.
+
+# QQ plots
+dataframe_qqplot(dj_vol_df, "DJIA daily volume QQ plots 2007-2018")
+# QQplots visually confirm the non-normality of daily trade volume distribution.
+
+## Daily volume log-ratio Exploratory Analysis
+
+# Similarly to log-returns, we can define the trade volume log ratio as.
+
+# vt :=lnVtVt−1
+
+
+# We can compute it by CalculateReturns within the PerformanceAnalytics package and plot it.
+
+dj_vol_log_ratio <- CalculateReturns(dj_vol, "log")
+dj_vol_log_ratio <- na.omit(dj_vol_log_ratio)
+plot(dj_vol_log_ratio)
+
+# Mapping the trade volume log-ratio time series data and timeline index into a dataframe.
+
+dj_vol_df <- xts_to_dataframe(dj_vol_log_ratio)
+head(dj_vol_df)
+
+
+tail(dj_vol_df)
+
+
+# Basic statistics summary
+(dj_stats <- dataframe_basicstats(dj_vol_df))
+
+# In the following, we make specific comments to some relevant above-shown metrics.
+# Mean
+
+# Years when Dow Jones daily volume log-ratio has positive mean are:
+
+filter_dj_stats(dj_stats, "Mean", 0)
+## [1] "2008" "2011" "2012" "2014" "2015" "2016" "2018"
+
+# All Dow Jones daily volume log-ratio mean values in ascending order.
+
+dj_stats["Mean",order(dj_stats["Mean",,])]
+
+
+# Median
+
+# Years when Dow Jones daily volume log-ratio has positive median are:
+
+filter_dj_stats(dj_stats, "Median", 0)
+## [1] "2008" "2014" "2015" "2018"
+
+# All Dow Jones daily volume log-ratio median values in ascending order.
+
+dj_stats["Median",order(dj_stats["Median",,])]
+
+# Skewness
+
+# Years when Dow Jones daily volume log-ratio has positive skewness are:
+
+filter_dj_stats(dj_stats, "Skewness", 0)
+## [1] "2009" "2011" "2016" "2017"
+
+# All Dow Jones daily volume log-ratio mean values in ascending order.
+
+dj_stats["Skewness",order(dj_stats["Skewness",,])]
+
+
+# Excess Kurtosis
+
+# Years when Dow Jones daily volume has positive excess kurtosis are:
+
+filter_dj_stats(dj_stats, "Kurtosis", 0)
+
+# All Dow Jones daily volume log-ratio excess kurtosis values in ascending order.
+
+dj_stats["Kurtosis",order(dj_stats["Kurtosis",,])]
+
+
+# Box-plots
+
+dataframe_boxplot(dj_vol_df, "DJIA daily volume box plots 2007-2018")
+# The most positive extreme values can be spotted on years 2011, 2014 and 2016. The most negative extreme values, on years 2007, 2011, 2012, 2014.
+
+# Density plots
+dataframe_densityplot(dj_vol_df, "DJIA daily volume density plots 2007-2018")
+
+# Shapiro Tests
+dataframe_shapirotest(dj_vol_df)
+# Based on reported p-values, for all we can reject the null hypothesis of normal distribution.
+# QQ plots
+dataframe_qqplot(dj_vol_df, "DJIA daily volume QQ plots 2007-2018")
+# Departure from normality can be spotted for all reported years.
+
+# Saving the current enviroment for further analysis.
+save.image(file='DowEnvironment.RData')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
