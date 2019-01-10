@@ -458,23 +458,224 @@ dataframe_qqplot(dj_vol_df, "DJIA daily volume QQ plots 2007-2018")
 save.image(file='DowEnvironment.RData')
 
 
+### Dow Jones Stock Market Index (3/4): Log Returns GARCH Model  ###
+load(file='DowEnvironment.RData')
+# This is the plot of DJIA daily log-returns.
+plot(dj_ret)
 
 
+Outliers Detection
+
+The Return.clean function within Performance Analytics package is able to clean return time series from outliers. Here below we compare the original time series with the outliers adjusted one.
+
+dj_ret_outliersadj <- Return.clean(dj_ret, "boudt")
+p <- plot(dj_ret)
+p <- addSeries(dj_ret_outliersadj, col = 'blue', on = 1)
+p
+
+The prosecution of the analysis will be carried on with the original time series as a more conservative approach to volatility evaluation.
+Correlation plots
+
+Here below are the total and partial correlation plots.
+
+acf(dj_ret)
+
+pacf(dj_ret)
+
+Above correlation plots suggest some ARMA(p,q) model with p and q > 0. That will be verified within the prosecution of the present analysis.
+Unit root tests
+
+We run the Augmented Dickey-Fuller test as available within the urca package. The no trend and no drift test flavor is run.
+
+(urdftest_lag = floor(12* (nrow(dj_ret)/100)^0.25))
+## [1] 28
+
+summary(ur.df(dj_ret, type = "none", lags = urdftest_lag, selectlags="BIC"))
 
 
+# Based on reported test statistics compared with critical values, we reject the null hypothesis of unit root presence. See ref. [6] for further details about the Augmented Dickey-Fuller test.
+# ARMA model
+# 
+# We now determine the ARMA structure of our time series in order to run the ARCH effects test on the resulting residuals. That is in agreement with what outlined in ref. [4] $4.3.
+# 
+# ACF and PACF plots tailing off suggests an ARMA(2,2) (ref. [5], table $3.1). We take advantage of auto.arima() function within forecast package (ref. [7]) to have an idea to start with.
+
+auto_model <- auto.arima(dj_ret)
+summary(auto_model)
+# ARMA(2,4) model is suggested. However, the ma3 coefficient is not significative, as further verified by:
+coeftest(auto_model)
+# Hence we put as a constraint MA order q <= 2.
+auto_model2 <- auto.arima(dj_ret, max.q=2)
+summary(auto_model2)
+# Now all coefficients are significative.
+coeftest(auto_model2)
+# Further verifications with ARMA(2,1) and ARMA(1,2) results with higher AIC values than ARMA(2,2). Hence ARMA(2,2) is preferable. Here are the results.
+
+auto_model3 <- auto.arima(dj_ret, max.p=2, max.q=1)
+summary(auto_model3)
+coeftest(auto_model3)
+
+# All coefficients are statistically significative.
+
+auto_model4 <- auto.arima(dj_ret, max.p=1, max.q=2)
+summary(auto_model4)
+coeftest(auto_model4)
+# All coefficients are statistically significative.
+
+# Furthermore, we investigate what eacf() function within the TSA package reports.
+eacf(dj_ret)
+# The upper left triangle with “O” as a vertex seems to be located somehow within (p,q) = {(1,2),(2,2),(1,3)}, which represents a set of potential candidate (p,q) values according to eacf function output. To remark that we prefer to consider parsimoniuos models, that is why we do not go too far as AR and MA orders.
+
+# ARMA(1,2) model was already verified. ARMA(2,2) is already a candidate model. Let us verify ARMA(1,3).
+
+(arima_model5 <- arima(dj_ret, order=c(1,0,3), include.mean = FALSE))
+coeftest(arima_model5)
+# Only one coefficient is statistically significative.
+
+# As a conclusion, we choose ARMA(2,2) as mean model. We can now proceed on with ARCH effect tests.
+
+# ARCH effect test
+
+# Now, we can test if any ARCH effects are present on residuals of our model. If ARCH effects are statistical significative for the residuals of our time series, a GARCH model is required.
+
+model_residuals <- residuals(auto_model2)
+ArchTest(model_residuals - mean(model_residuals))
+## 
+##  ARCH LM-test; Null hypothesis: no ARCH effects
+## 
+## data:  model_residuals - mean(model_residuals)
+## Chi-squared = 986.82, df = 12, p-value < 2.2e-16
+
+# Based on reported p-value, we reject the null hypothesis of no ARCH effects.
+# 
+# Let us have a look at the residual correlation plots.
+
+par(mfrow=c(1,2))
+acf(model_residuals)
+pacf(model_residuals)
 
 
+# Conditional Volatility
+
+# The conditional mean and variance are defined as:
+
+# μt := E(rt| Ft−1)σ2t := Var(rt| Ft−1) = E[(rt−μt)2|Ft−1]
+
+# The conditional volatility can be computed as square root of the conditional variance. See ref. [4] for further details.
 
 
+# eGARCH Model
 
+# The attempts with sGARCH as variance model did not bring to result with significative coefficients. On the contrary, the exponential GARCH (eGARCH) variance model is capable to capture asymmetries within the volatility shocks.
 
+# To inspect asymmetries within the DJIA log returns, summary statistics and density plot are shown.
 
+basicStats(dj_ret)
 
+# The negative skewness value confirms the presence of asymmetries within the DJIA distribution.
 
+# This gives the density plot.
 
+plot(density(dj_ret))
 
+# We go on proposing as variance model (for conditional variance) the eGARCH model. More precisely, we are about to model an ARMA-GARCH, with ARMA(2,2) as a mean model and exponential GARCH(1,1) as the variance model. Before doing that, we further emphasize how ARMA(0,0) is not satisfactory within this context.
 
+# ARMA-GARCH: ARMA(0,0) + eGARCH(1,1)
 
+garchspec <- ugarchspec(mean.model = list(armaOrder = c(0,0), include.mean = TRUE), 
+                        variance.model = list(model = "eGARCH", garchOrder = c(1, 1)),
+                        distribution.model = "sstd")
 
+(garchfit <- ugarchfit(data = dj_ret, spec = garchspec))
+# All coefficients are statistically significative. However, from Weighted Ljung-Box Test on Standardized Residuals reported p-value above (as part of the overall report), we have the confirmation that such model does not capture all the structure (we reject the null hypothesis of no correlation within the residuals).
 
+# As a conclusion, we proceed on by specifying ARMA(2,2) as a mean model within our GARCH fit as hereinbelow shown.
+# ARMA-GARCH: ARMA(2,2) + eGARCH(1,1)
 
+garchspec <- ugarchspec(mean.model = list(armaOrder = c(2,2), include.mean = FALSE), 
+                        variance.model = list(model = "eGARCH", garchOrder = c(1, 1)),
+                        distribution.model = "sstd")
+
+(garchfit <- ugarchfit(data = dj_ret, spec = garchspec))
+
+# All coefficients are statistically significative. No correlation within standardized residuals or standardized squared residuals is found. All ARCH effects are properly captured by the model. However:
+# 
+# * the Nyblom stability test null hypothesis that the model parameters are constant over time is rejected for some of them
+# 
+# * the Positive Sign Bias null hypothesis is rejected at 5% level of significance; this kind of test focuses on the effect of large and small positive shocks
+# 
+# * the Adjusted Pearson Goodness-of-fit test null hypothesis that the empirical and theoretical distribution of standardized residuals are identical is rejected
+
+# See ref. [11] for an explanation about GARCH model diagnostic.
+
+# Note: The ARMA(1,2) + eGARCH(1,1) fit also provides with significative coefficients, no correlation within standardized residuals, no correlation within standardized squared residuals and all ARCH effects are properly captured. However the bias tests are less satisfactory at 5% than the ARMA(2,2) + eGARCH(1,1) model ones.
+
+# We show some diagnostic plots further.
+
+par(mfrow=c(2,2))
+plot(garchfit, which=8)
+plot(garchfit, which=9)
+plot(garchfit, which=10)
+plot(garchfit, which=11)
+
+# We show the original DJIA log-returns time series with the mean model fit (red line) and the conditional volatility (blue line).
+
+par(mfrow=c(1,1))
+cond_volatility <- sigma(garchfit)
+mean_model_fit <- fitted(garchfit)
+p <- plot(dj_ret, col = "grey")
+p <- addSeries(mean_model_fit, col = 'red', on = 1)
+p <- addSeries(cond_volatility, col = 'blue', on = 1)
+p
+
+# Model Equation
+# 
+# Combining both ARMA(2,2) and eGARCH models we have:
+# 
+# ⎧⎪
+# ⎪
+# ⎪
+# ⎪
+# ⎪
+# ⎪⎨⎪
+# ⎪
+# ⎪
+# ⎪
+# ⎪
+# ⎪⎩yt − ϕ1yt−1 − ϕ2yt−2= ϕ0 + ut + θ1ut−1 + θ2ut−2ut = σtϵt,     ϵt=N(0,1)ln(σ2t) = ω +∑qj=1(αjϵ2t−j +γ(ϵt−j–E|ϵt−j|))+ ∑pi=1βiln(σ2t−1)
+# 
+# Using the model resulting coefficients, it results as follows.
+# 
+# ⎧⎪
+# ⎪
+# ⎪
+# ⎪
+# ⎪⎨⎪
+# ⎪
+# ⎪
+# ⎪
+# ⎪⎩yt +0.476 yt−1 +0.575 yt−2= ut +0.429 ut−1 +0.563 ut−2ut = σtϵt,     ϵt=N(0,1)ln(σ2t) = −0.313 −0.174ϵ2t−1 +0.189 (ϵt−1–E|ϵt−1|))+ 0.966 ln(σ2t−1)
+
+# Volatility Analysis
+
+# Here is the plot of conditional volatility as resulting from our ARMA(2,2) + eGARCH(1,1) model.
+
+plot(cond_volatility)
+
+# Line plots of conditional volatility by year are shown.
+
+par(mfrow=c(6,2))
+pl <- lapply(2007:2018, function(x) { plot(cond_volatility[as.character(x)], main = "DJIA Daily Log returns conditional volatility")})
+pl
+
+# Conditional volatility box-plots by year are shown.
+
+par(mfrow=c(1,1))
+cond_volatility_df <- xts_to_dataframe(cond_volatility)
+dataframe_boxplot(cond_volatility_df, "Dow Jones Daily Log-returns conditional Volatility 2007-2018")
+
+# Afterwards 2008, the daily volatility basically tends to decrease. In the year 2017, the volatility was lower with respect any other year under analysis. Differently, on year 2018, we experienced a remarkable increase of volatility with respect year 2017.
+
+# Saving the current enviroment for further analysis.
+
+save.image(file='DowEnvironment.RData')
