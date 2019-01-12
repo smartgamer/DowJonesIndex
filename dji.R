@@ -13,9 +13,9 @@ suppressPackageStartupMessages(library(forecast)) # ARMA modeling
 suppressPackageStartupMessages(library(strucchange)) # structural changes
 suppressPackageStartupMessages(library(TSA)) # ARMA order identification
 
-install.packages("FinTS", repos="http://R-Forge.R-project.org")
-install.packages("fBasics", dependencies = T)
-install.packages("rugarch", dependencies = T)
+# install.packages("FinTS", repos="http://R-Forge.R-project.org")
+# install.packages("fBasics", dependencies = T)
+# install.packages("rugarch", dependencies = T)
 
 
 
